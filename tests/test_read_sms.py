@@ -152,77 +152,47 @@ Second message'''
     
     def test_read_and_connect_success(self):
         """Test complete SMS reading flow success."""
-        with patch.object(self.reader, 'connect') as mock_connect, \
-             patch.object(self.reader, 'disconnect') as mock_disconnect, \
-             patch.object(self.reader, 'send_at_command') as mock_send, \
-             patch.object(self.reader, 'detect_baudrate'), \
-             patch('time.sleep'):
+        with patch.object(self.reader, 'list_all_sms') as mock_list:
+            mock_list.return_value = []
             
-            mock_connect.return_value = True
+            result = self.reader.read_sms()
             
-            mock_send.side_effect = [
-                {'success': True, 'data': ''},  # ATE0
-                {'success': True, 'data': ''},  # CMGF=1
-                {'success': True, 'data': ''}   # CMGL="ALL"
-            ]
-            
-            result = self.reader.read_and_connect()
-            
-            assert result is True
-            mock_connect.assert_called_once()
-            mock_disconnect.assert_called_once()
+            assert result == []
+            mock_list.assert_called_once()
     
     def test_read_and_connect_connection_failure(self):
         """Test SMS reading when connection fails."""
-        with patch.object(self.reader, 'connect') as mock_connect:
-            mock_connect.return_value = False
+        with patch.object(self.reader, 'list_all_sms') as mock_list:
+            mock_list.return_value = None
             
-            result = self.reader.read_and_connect()
+            result = self.reader.read_sms()
             
-            assert result is False
+            assert result is None
     
     def test_read_and_connect_with_messages(self):
         """Test SMS reading with actual messages."""
-        mock_sms_data = '''+CMGL: 0,"REC UNREAD","+1234567890","23/10/15,10:20:30+00"
-Hello World'''
+        mock_messages = [
+            {'index': '0', 'status': 'REC UNREAD', 'sender': '+1234567890', 
+             'timestamp': '23/10/15,10:20:30+00', 'content': 'Hello World'}
+        ]
         
-        with patch.object(self.reader, 'connect') as mock_connect, \
-             patch.object(self.reader, 'disconnect') as mock_disconnect, \
-             patch.object(self.reader, 'send_at_command') as mock_send, \
-             patch.object(self.reader, 'detect_baudrate'), \
-             patch('time.sleep'):
+        with patch.object(self.reader, 'list_all_sms') as mock_list:
+            mock_list.return_value = mock_messages
             
-            mock_connect.return_value = True
+            result = self.reader.read_sms()
             
-            mock_send.side_effect = [
-                {'success': True, 'data': ''},      # ATE0
-                {'success': True, 'data': ''},      # CMGF=1
-                {'success': True, 'data': mock_sms_data}  # CMGL="ALL"
-            ]
-            
-            result = self.reader.read_and_connect()
-            
-            assert result is True
-            mock_connect.assert_called_once()
+            assert result == mock_messages
+            assert len(result) == 1
+            assert result[0]['content'] == 'Hello World'
     
     def test_read_and_connect_list_fails(self):
         """Test SMS reading when list_all_sms fails."""
-        with patch.object(self.reader, 'connect') as mock_connect, \
-             patch.object(self.reader, 'disconnect') as mock_disconnect, \
-             patch.object(self.reader, 'send_at_command') as mock_send, \
-             patch.object(self.reader, 'detect_baudrate'), \
-             patch('time.sleep'):
+        with patch.object(self.reader, 'list_all_sms') as mock_list:
+            mock_list.return_value = None
             
-            mock_connect.return_value = True
+            result = self.reader.read_sms()
             
-            mock_send.side_effect = [
-                {'success': True, 'data': ''},      # ATE0
-                {'success': False, 'data': ''}     # CMGF=1 fails
-            ]
-            
-            result = self.reader.read_and_connect()
-            
-            assert result is False
+            assert result is None
 
 
 if __name__ == '__main__':
