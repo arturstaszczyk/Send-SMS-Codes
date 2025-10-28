@@ -6,13 +6,11 @@ Connects to SIM800C and sends SMS messages to specified phone number.
 
 import sys
 import time
-import os
 
 # Handle imports when running as script or module
 try:
     from sim800c import SIM800C
 except ImportError:
-    import sys
     import os
     sys.path.insert(0, os.path.dirname(__file__))
     from sim800c import SIM800C
@@ -149,6 +147,7 @@ class SMSSender(SIM800C):
 def main():
     """Main entry point."""
     # Try to load environment variables from .env file
+    
     try:
         from dotenv import load_dotenv
         load_dotenv()
@@ -156,40 +155,31 @@ def main():
         pass
     
     # Get phone number from environment
-    phone_number = os.getenv('SMS_PHONE_NUMBER')
-    if not phone_number:
-        print("✗ Error: SMS_PHONE_NUMBER environment variable not set")
-        print("Please set SMS_PHONE_NUMBER in your .env file")
-        sys.exit(1)
+    phone_number = SIM800C.read_env_variable('SMS_PHONE_NUMBER')
+    phone_number_log = SIM800C.read_env_variable('SMS_PHONE_NUMBER_LOG')
     
-    # Get messages from environment (Message_1, Message_2, etc.)
-    messages = []
-    i = 1
-    while True:
-        message_key = f'Message_{i}'
-        message = os.getenv(message_key)
-        if not message:
-            break
-        messages.append(message)
-        i += 1
+    # Get message number from command line argument (default to 1)
+    message_number = 1
+    if len(sys.argv) > 1:
+        try:
+            message_number = int(sys.argv[1])
+        except ValueError:
+            print(f"✗ Error: Invalid message number '{sys.argv[1]}'. Using default (1)")
+            message_number = 1
     
-    # Also check for single 'Message' variable (for backwards compatibility)
-    if not messages:
-        single_message = os.getenv('Message')
-        if single_message:
-            messages = [single_message]
+    # Get the specified message from environment
+    message_key = f'MESSAGE_{message_number}'
+    message = SIM800C.read_env_variable(message_key)
     
-    if not messages:
-        print("✗ Error: No messages found in environment variables")
-        print("Please set Message_1, Message_2, etc. (or just Message) in your .env file")
-        sys.exit(1)
+    messages = [message]
     
     print(f"\nConfiguration:")
     print(f"  Phone Number: {phone_number}")
+    print(f"  Phone Number: {phone_number_log}")
     print(f"  Number of messages: {len(messages)}")
     
     # Get port from environment variable or default
-    port = os.getenv('SIM800_PORT', '/dev/ttyS0')
+    port = SIM800C.read_env_variable('SIM800_PORT', '/dev/ttyS0')
     
     sender = SMSSender(port=port)
     
@@ -198,17 +188,47 @@ def main():
         sender.h1_message("Failed to connect to SIM800C")
         sys.exit(1)
     
-    success = False
+    statistics = {
+        'primary_sent': 0,
+        'primary_total': 0,
+        'log_sent': 0,
+        'log_total': 0
+    }
+    
     try:
-        # Send SMS messages
-        success = sender.send_sms(phone_number, messages)
+        # Send SMS to primary recipient
+        sender.h1_message(f"Sending to PRIMARY recipient: {phone_number}")
+        primary_success = sender.send_sms(phone_number, messages)
+        statistics['primary_sent'] = len(messages) if primary_success else 0
+        statistics['primary_total'] = len(messages)
+        
+        # Create descriptive log message
+        log_message = f"[LOG] Message sent to {phone_number}\nContent: {message}\nStatus: {'SUCCESS' if primary_success else 'FAILED'}"
+        log_messages = [log_message]
+        
+        # Send log message to log recipient
+        sender.h1_message(f"Sending to LOG recipient: {phone_number_log}")
+        log_success = sender.send_sms(phone_number_log, log_messages)
+        statistics['log_sent'] = len(log_messages) if log_success else 0
+        statistics['log_total'] = len(log_messages)
         
     except Exception as e:
         print(f"\n✗ Error during operation: {e}")
     finally:
         sender.disconnect()
     
-    sys.exit(0 if success else 1)
+    # Display statistics
+    print("\n" + "="*50)
+    print("SMS SENDING STATISTICS")
+    print("="*50)
+    print(f"Primary recipient ({phone_number}):")
+    print(f"  Sent: {statistics['primary_sent']}/{statistics['primary_total']}")
+    print(f"Log recipient ({phone_number_log}):")
+    print(f"  Sent: {statistics['log_sent']}/{statistics['log_total']}")
+    print("="*50)
+    
+    overall_success = (statistics['primary_sent'] > 0 and statistics['log_sent'] > 0)
+    sys.exit(0 if overall_success else 1)
 
 
 if __name__ == '__main__':

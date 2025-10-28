@@ -6,13 +6,11 @@ Connects to SIM800C and lists all SMS messages using AT+CMGL="ALL" command.
 
 import sys
 import time
-import os
 
 # Handle imports when running as script or module
 try:
     from sim800c import SIM800C
 except ImportError:
-    import sys
     import os
     sys.path.insert(0, os.path.dirname(__file__))
     from sim800c import SIM800C
@@ -211,7 +209,7 @@ def main():
     """Main entry point."""
     # Check for serial port argument
     # Get port from environment variable or default
-    port = os.getenv('SIM800_PORT', '/dev/ttyS0')
+    port = SIM800C.read_env_variable('SIM800_PORT', '/dev/ttyS0')
     
     reader = SMSReader(port=port)
 

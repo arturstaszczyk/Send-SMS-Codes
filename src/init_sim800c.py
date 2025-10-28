@@ -13,7 +13,6 @@ import sys
 try:
     from sim800c import SIM800C as BaseSIM800C
 except ImportError:
-    import sys
     import os
     sys.path.insert(0, os.path.dirname(__file__))
     from sim800c import SIM800C as BaseSIM800C
@@ -47,9 +46,10 @@ class SIM800CInitializer(BaseSIM800C):
         """Check PIN status and set if needed from environment variable."""
         def get_pin_cmd():
             """Generate PIN command from environment variable."""
-            pin = os.getenv('SIM800_PIN')
-            if pin:
-                return f'AT+CPIN={pin}'
+            # Try to read PIN, but it's optional
+            value = os.getenv('SIM800_PIN')
+            if value:
+                return f'AT+CPIN={value}'
             else:
                 print("✗ PIN required but SIM800_PIN environment variable not set")
                 return None

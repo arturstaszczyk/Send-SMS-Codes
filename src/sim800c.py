@@ -26,6 +26,30 @@ class SIM800C:
         self.baudrate = baudrate
         self.timeout = timeout
         self.ser = None
+    
+    @staticmethod
+    def read_env_variable(name, default=None):
+        """
+        Read an environment variable with error handling.
+        
+        Args:
+            name: Environment variable name
+            default: Default value if not set (optional)
+        
+        Returns:
+            Environment variable value or default if set
+        
+        Exits:
+            sys.exit(0) if variable is not set and no default provided
+        """
+        value = os.getenv(name)
+        
+        if value is None and default is None:
+            print(f"✗ Error: {name} environment variable not set")
+            print(f"Please set {name} in your .env file")
+            sys.exit(0)
+        
+        return value if value is not None else default
         
     def connect(self):
         """Open serial connection."""
