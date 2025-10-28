@@ -29,6 +29,10 @@ class SIM800C:
         
     def connect(self):
         """Open serial connection."""
+
+
+        self.h1_message("Connecting to SIM800C")
+
         try:
             self.ser = serial.Serial(
                 port=self.port,
@@ -49,12 +53,17 @@ class SIM800C:
         if self.ser and self.ser.is_open:
             self.ser.close()
             print("Serial connection closed")
-    
+
+    def h1_message(self, message):
+        print("\n" + "="*50)
+        print(message)
+        print("="*50)
+
     def detect_baudrate(self):
         """Auto-detect the correct baudrate by testing common values."""
         common_baudrates = [115200, 9600, 19200, 38400, 57600]
         
-        print("Attempting to auto-detect baudrate...")
+        self.h1_message("Attempting to auto-detect baudrate...")
         for baudrate in common_baudrates:
             print(f"Trying {baudrate} baud...")
             
@@ -102,6 +111,7 @@ class SIM800C:
         Returns:
             dict with 'success' and 'data' keys
         """
+        self.h1_message(f"Sending AT command: {command}")
         if not self.ser or not self.ser.is_open:
             print("Serial port not open")
             return {'success': False, 'data': ''}
@@ -301,5 +311,51 @@ class SIM800C:
                 return True  # Still proceed if we get OK
         else:
             print("✗ Failed to verify module")
+            return False
+    
+    def setup_connection(self):
+        """
+        Setup and initialize connection to SIM800 module.
+        
+        Returns:
+            bool indicating success
+        """
+        # Try to connect (use super() to avoid naming conflicts)
+        if not self.ser or not self.ser.is_open:
+            try:
+                self.ser = serial.Serial(
+                    port=self.port,
+                    baudrate=self.baudrate,
+                    timeout=self.timeout,
+                    bytesize=serial.EIGHTBITS,
+                    parity=serial.PARITY_NONE,
+                    stopbits=serial.STOPBITS_ONE
+                )
+                print(f"Connected to {self.port} at {self.baudrate} baud")
+            except serial.SerialException as e:
+                print(f"Error opening serial port: {e}")
+                return False
+        
+        try:
+            # Wait a bit for module to be ready
+            time.sleep(1)
+            
+            # Disable echo
+            print("\n=== Disabling Echo ===")
+            echo_result = self.send_at_command('ATE0')
+            
+            # If echo command failed, try to auto-detect baudrate
+            if not echo_result['success'] and echo_result['data'] == '':
+                print("\nNo response from module, attempting baudrate detection...")
+                if not self.detect_baudrate():
+                    print("✗ Failed to detect baudrate and module not responding")
+                    return False
+                # Retry echo after baudrate detection
+                self.send_at_command('ATE0')
+            
+            return True
+            
+        except Exception as e:
+            print(f"\n✗ Error during connection setup: {e}")
             return False
 

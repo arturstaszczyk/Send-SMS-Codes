@@ -9,6 +9,9 @@ import time
 from unittest.mock import Mock, patch
 from io import BytesIO
 
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from src.read_sms import SMSReader
 
 

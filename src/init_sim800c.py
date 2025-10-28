@@ -8,7 +8,15 @@ import serial
 import time
 import os
 import sys
-from .sim800c import SIM800C as BaseSIM800C
+
+# Handle imports when running as script or module
+try:
+    from sim800c import SIM800C as BaseSIM800C
+except ImportError:
+    import sys
+    import os
+    sys.path.insert(0, os.path.dirname(__file__))
+    from sim800c import SIM800C as BaseSIM800C
 
 # Try to load environment variables from .env file if python-dotenv is available
 try:

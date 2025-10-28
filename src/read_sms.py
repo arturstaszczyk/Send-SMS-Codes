@@ -6,7 +6,16 @@ Connects to SIM800C and lists all SMS messages using AT+CMGL="ALL" command.
 
 import sys
 import time
-from .sim800c import SIM800C
+import os
+
+# Handle imports when running as script or module
+try:
+    from sim800c import SIM800C
+except ImportError:
+    import sys
+    import os
+    sys.path.insert(0, os.path.dirname(__file__))
+    from sim800c import SIM800C
 
 
 class SMSReader(SIM800C):
@@ -169,66 +178,60 @@ class SMSReader(SIM800C):
             print(f"✗ Failed to delete SMS {index}")
             return False
     
-    def read_and_connect(self):
+    
+    def read_sms(self):
         """
-        Connect to module and read SMS messages.
+        Read SMS messages from the module.
         
         Returns:
-            bool indicating success
+            list of SMS messages or None on failure
         """
-        print("\n" + "="*50)
-        print("SIM800C SMS Reader")
-        print("="*50)
-        
-        # Try to connect
-        initial_success = self.connect()
-        if not initial_success:
-            return False
-        
         try:
-            # Wait a bit for module to be ready
-            time.sleep(1)
-            
-            # Disable echo
-            print("\n=== Disabling Echo ===")
-            echo_result = self.send_at_command('ATE0')
-            
-            # If echo command failed, try to auto-detect baudrate
-            if not echo_result['success'] and echo_result['data'] == '':
-                print("\nNo response from module, attempting baudrate detection...")
-                if not self.detect_baudrate():
-                    print("✗ Failed to detect baudrate and module not responding")
-                    return False
-                # Retry echo after baudrate detection
-                self.send_at_command('ATE0')
-            
             # Read SMS messages
             messages = self.list_all_sms()
             
             if messages is None:
                 print("\n✗ Failed to read SMS messages")
-                return False
+                return None
             
             print("\n" + "="*50)
             print(f"✓ SMS Reading Complete! Found {len(messages) if messages else 0} message(s)")
             print("="*50)
             
-            return True
+            return messages
             
         except Exception as e:
             print(f"\n✗ Error during SMS reading: {e}")
-            return False
-        finally:
-            self.disconnect()
+            return None
+    
+
 
 
 def main():
     """Main entry point."""
     # Check for serial port argument
-    port = sys.argv[1] if len(sys.argv) > 1 else '/dev/ttyS0'
+    # Get port from environment variable or default
+    port = os.getenv('SIM800_PORT', '/dev/ttyS0')
     
     reader = SMSReader(port=port)
-    success = reader.read_and_connect()
+
+    # Connect
+    if not reader.setup_connection():
+        reader.h1_message("Failed to connect to SIM800C")
+        sys.exit(1)
+    
+    success = False
+    try:
+        # Read SMS messages
+        messages = reader.read_sms()
+        
+        if messages is not None:
+            success = True
+        
+    except Exception as e:
+        print(f"\n✗ Error during operation: {e}")
+    finally:
+        reader.disconnect()
     
     sys.exit(0 if success else 1)
 

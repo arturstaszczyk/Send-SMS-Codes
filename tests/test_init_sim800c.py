@@ -10,6 +10,7 @@ from unittest.mock import Mock, patch, MagicMock, call
 from io import BytesIO
 import os
 import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 # Import the module to test
 from src.init_sim800c import SIM800CInitializer
