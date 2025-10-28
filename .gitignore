@@ -1,0 +1,13 @@
+.env
+__pycache__/
+.pytest_cache/
+.coverage
+.coverage.*
+.coverage.xml
+.coverage.json
+.coverage.yaml
+.coverage.yml
+.coverage.html
+.coverage.json.html
+.coverage.json.yaml
+.coverage.json.yml
