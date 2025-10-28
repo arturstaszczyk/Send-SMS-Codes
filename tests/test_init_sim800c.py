@@ -12,18 +12,18 @@ import os
 import sys
 
 # Import the module to test
-from init_sim800c import SIM800C
+from src.init_sim800c import SIM800CInitializer
 
 
-class TestSIM800C:
+class TestSIM800CInitializer:
     """Test suite for SIM800C class."""
     
     def setup_method(self):
         """Set up test fixtures before each test method."""
-        self.sim800 = SIM800C(port='/dev/ttyS0', baudrate=115200, timeout=1)
+        self.sim800 = SIM800CInitializer(port='/dev/ttyS0', baudrate=115200, timeout=1)
     
     def test_init(self):
-        """Test SIM800C initialization."""
+        """Test SIM800CInitializer initialization."""
         assert self.sim800.port == '/dev/ttyS0'
         assert self.sim800.baudrate == 115200
         assert self.sim800.timeout == 1
